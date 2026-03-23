@@ -1,0 +1,41 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Cargar variables de entorno desde .env
+dotenv.config();
+
+function getEnv(key: string, required: boolean = true, defaultValue: string = ''): string {
+    const value = process.env[key] || defaultValue;
+    if (required && !value) {
+        throw new Error(`[Config] Falta la variable de entorno requerida: ${key}`);
+    }
+    return value;
+}
+
+export const config = {
+    telegram: {
+        botToken: getEnv('TELEGRAM_BOT_TOKEN'),
+        // Soporta múltiples IDs separados por comas
+        allowedUserIds: getEnv('TELEGRAM_ALLOWED_USER_IDS')
+            .split(',')
+            .map(id => parseInt(id.trim(), 10))
+            .filter(id => !isNaN(id)),
+    },
+    llm: {
+        groqApiKey: getEnv('GROQ_API_KEY'),
+        openRouterApiKey: getEnv('OPENROUTER_API_KEY', false), // Opcional fallback
+        openRouterModel: getEnv('OPENROUTER_MODEL', false, 'openrouter/free'),
+    },
+    db: {
+        path: getEnv('DB_PATH', false, './memory.db'),
+    },
+    server: {
+        port: parseInt(getEnv('PORT', false, '8080'), 10),
+        webhookUrl: getEnv('WEBHOOK_URL', false), // URL pública para Cloud Run
+    }
+};
+
+if (config.telegram.allowedUserIds.length === 0) {
+    throw new Error('[Config] Debe especificarse al menos un TELEGRAM_ALLOWED_USER_IDS válido.');
+}
