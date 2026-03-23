@@ -6,6 +6,12 @@ import { dirname, join } from 'path';
 dotenv.config();
 
 function getEnv(key: string, required: boolean = true, defaultValue: string = ''): string {
+    // Listar llaves disponibles (solo una vez) para depuración
+    if (key === 'TELEGRAM_BOT_TOKEN') {
+        const keys = Object.keys(process.env).filter(k => !k.startsWith('npm_') && !k.startsWith('NODE_'));
+        console.log(`[Config] Llaves detectadas por el sistema: ${keys.join(', ')}`);
+    }
+
     const value = process.env[key] || defaultValue;
     if (required && !value) {
         console.error(`[Config] ERROR: Falta la variable de entorno: ${key}`);
