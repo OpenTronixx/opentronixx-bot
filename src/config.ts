@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-// Cargar variables de entorno desde .env
-dotenv.config();
+// Cargar variables de entorno desde .env solo si existe (desarrollo local)
+if (fs.existsSync('.env')) {
+    dotenv.config();
+}
 
 function getEnv(key: string, required: boolean = true, defaultValue: string = ''): string {
     // Depuración agresiva
