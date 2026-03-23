@@ -6,10 +6,15 @@ import { dirname, join } from 'path';
 dotenv.config();
 
 function getEnv(key: string, required: boolean = true, defaultValue: string = ''): string {
-    // Listar llaves disponibles (solo una vez) para depuración
+    // Depuración agresiva
     if (key === 'TELEGRAM_BOT_TOKEN') {
-        const keys = Object.keys(process.env).filter(k => !k.startsWith('npm_') && !k.startsWith('NODE_'));
-        console.log(`[Config] Llaves detectadas por el sistema: ${keys.join(', ')}`);
+        const keys = Object.keys(process.env).sort();
+        console.log(`--- [DEBUG] LISTA DE VARIABLES DETECTADAS (${keys.length}) ---`);
+        keys.forEach(k => {
+            if (!k.startsWith('npm_')) console.log(`  > ${k}`);
+        });
+        console.log(`--- [DEBUG] FIN DE LISTA ---`);
+        console.log(`--- [DEBUG] Valor de PORT: ${process.env.PORT} ---`);
     }
 
     const value = process.env[key] || defaultValue;
