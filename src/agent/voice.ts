@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import fs from 'fs';
+import path from 'path';
 
 export async function transcribeAudio(filePath: string): Promise<string> {
     const groqUrl = "https://api.groq.com/openai/v1/audio/transcriptions";
@@ -38,5 +39,36 @@ export async function transcribeAudio(filePath: string): Promise<string> {
     } catch (error: any) {
         console.error(`[Voice] Error en transcripción:`, error.message);
         throw error;
+    }
+}
+
+/**
+ * Convierte texto a un archivo de audio MP3 usando el motor gratuito de Google.
+ * Limitado a ~200 caracteres por las restricciones del URL.
+ */
+export async function synthesizeSpeech(text: string): Promise<string | null> {
+    // Limpiar texto para el URL y limitar longitud
+    const cleanText = text.replace(/[*_`]/g, '').substring(0, 200); 
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=es&client=tw-ob`;
+    
+    const tempPath = path.join(process.cwd(), `response_${Date.now()}.mp3`);
+
+    try {
+        console.log(`[Voice] Generando audio de respuesta (TTS)...`);
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0' // Google bloquea si no hay User-Agent
+            }
+        });
+
+        if (!response.ok) throw new Error("Google TTS falló");
+
+        const buffer = await response.arrayBuffer();
+        fs.writeFileSync(tempPath, Buffer.from(buffer));
+        
+        return tempPath;
+    } catch (err) {
+        console.error("[Voice] Error en TTS:", err);
+        return null;
     }
 }
