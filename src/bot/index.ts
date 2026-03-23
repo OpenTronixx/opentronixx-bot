@@ -2,6 +2,9 @@ import { Bot } from 'grammy';
 import { config } from '../config.js';
 import { runAgentLoop } from '../agent/loop.js';
 import { dbService } from '../db/index.js';
+import { transcribeAudio } from '../agent/voice.js';
+import fs from 'fs';
+import path from 'path';
 
 export const bot = new Bot(config.telegram.botToken);
 
@@ -15,7 +18,7 @@ bot.use(async (ctx, next) => {
 });
 
 bot.command("start", async (ctx) => {
-    await ctx.reply("¡Hola! Soy OpenTronixx, tu agente de IA personal. Funciono de manera local y 100% privada. Envíame un mensaje para comenzar a operar.");
+    await ctx.reply("¡Hola! Soy OpenTronixx, tu agente de IA personal. Ahora también puedo escuchar tus mensajes de voz. Envíame un mensaje o un audio para comenzar.");
 });
 
 bot.command("clear", async (ctx) => {
@@ -27,16 +30,53 @@ bot.command("clear", async (ctx) => {
 
 // Manejo de mensajes de texto
 bot.on("message:text", async (ctx) => {
-    const userId = ctx.from.id;
-    const userMessage = ctx.message.text;
+    await handleTranscription(ctx, ctx.message.text);
+});
 
-    // Indicador de "Escribiendo..." en Telegram
+// Manejo de mensajes de voz
+bot.on("message:voice", async (ctx) => {
+    const userId = ctx.from.id;
+    
+    try {
+        await ctx.replyWithChatAction("record_voice");
+        
+        // 1. Obtener información del archivo
+        const file = await ctx.getFile();
+        const tempPath = path.join(process.cwd(), `voice_${Date.now()}.ogg`);
+        
+        // 2. Descargar el archivo manualmente usando fetch
+        const fileUrl = `https://api.telegram.org/file/bot${config.telegram.botToken}/${file.file_path}`;
+        const response = await fetch(fileUrl);
+        const buffer = await response.arrayBuffer();
+        fs.writeFileSync(tempPath, Buffer.from(buffer));
+
+        // 3. Transcribir
+        await ctx.replyWithChatAction("typing");
+        const transcribedText = await transcribeAudio(tempPath);
+        
+        // 4. Limpiar archivo temporal
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+
+        // 5. Informar al usuario y procesar
+        console.log(`[Bot] Voz de ${userId} transcrita: "${transcribedText}"`);
+        await ctx.reply(`🎤 _He escuchado:_ "${transcribedText}"`, { parse_mode: "Markdown" });
+        
+        await handleTranscription(ctx, transcribedText);
+
+    } catch (e: any) {
+        console.error("[Bot] Error procesando voz:", e);
+        await ctx.reply("Lo siento, no pude entender tu mensaje de voz. ¿Podrías repetirlo o escribirlo?");
+    }
+});
+
+// Función auxiliar para procesar texto (sea directo o transcrito)
+async function handleTranscription(ctx: any, text: string) {
+    const userId = ctx.from.id;
     await ctx.replyWithChatAction("typing");
 
     try {
-        const replyText = await runAgentLoop(userId, userMessage);
+        const replyText = await runAgentLoop(userId, text);
         
-        // Telegram tiene un límite de 4096 caracteres. Haremos un corte preventivo si es enorme.
         if (replyText.length > 4000) {
             await ctx.reply(replyText.slice(0, 4000) + "\n\n[Mensaje truncado por longitud...]");
         } else {
@@ -47,4 +87,4 @@ bot.on("message:text", async (ctx) => {
         const errorMsg = e.message ? String(e.message) : String(e);
         await ctx.reply(`Ocurrió un error interno: ${errorMsg.substring(0, 500)}`);
     }
-});
+}
