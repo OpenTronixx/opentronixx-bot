@@ -34,8 +34,11 @@ if (!getApps().length) {
                 projectId: process.env.FIREBASE_PROJECT_ID || 'opentronixx',
             });
         }
-    } catch (error) {
-        console.error('[Firebase] Error crítico al inicializar SDK:', error);
+    } catch (error: any) {
+        console.error('[Firebase] Error crítico al inicializar SDK:', error.message);
+        if (serviceAccountEnv) {
+            console.error('[Firebase] Nota: La variable FIREBASE_SERVICE_ACCOUNT existe pero falló al procesarse.');
+        }
         // Último intento sin credenciales explícitas
         if (!getApps().length) {
             initializeApp({

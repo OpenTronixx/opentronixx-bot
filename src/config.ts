@@ -8,8 +8,10 @@ dotenv.config();
 function getEnv(key: string, required: boolean = true, defaultValue: string = ''): string {
     const value = process.env[key] || defaultValue;
     if (required && !value) {
+        console.error(`[Config] ERROR: Falta la variable de entorno: ${key}`);
         throw new Error(`[Config] Falta la variable de entorno requerida: ${key}`);
     }
+    console.log(`[Config] Variable ${key} cargada correctamente.`);
     return value;
 }
 
